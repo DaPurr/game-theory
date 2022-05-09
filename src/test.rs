@@ -13,7 +13,7 @@ enum RPSAction {
 }
 struct RPSState;
 
-impl GameState<RPSAction, usize, usize> for RPSState {
+impl GameState<usize, usize, RPSAction> for RPSState {
     fn advance(self, action: RPSAction) -> Self {
         todo!()
     }
@@ -30,7 +30,11 @@ impl GameState<RPSAction, usize, usize> for RPSState {
         todo!()
     }
 
-    fn player(&self) -> &usize {
+    fn player(&self) -> Option<&usize> {
+        todo!()
+    }
+
+    fn utility(&self, player: &usize) -> Option<f32> {
         todo!()
     }
 }
