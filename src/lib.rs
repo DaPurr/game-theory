@@ -1,11 +1,10 @@
 //! Crate providing game-theoretical concepts.
 
 use core::panic;
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, hash, marker::PhantomData};
 
 use petgraph::{
-    data::DataMap,
-    graph::{DiGraph, GraphIndex, NodeIndex},
+    graph::{DiGraph, NodeIndex},
     EdgeDirection,
 };
 
@@ -26,7 +25,9 @@ pub trait GameState<InformationSet, Player, Action> {
     }
 
     /// Perform ```action``` to advance the game state.
-    fn advance(self, action: Action) -> Self;
+    fn advance(self, action: Action) -> Option<Self>
+    where
+        Self: Sized;
 
     /// Obtain this node's action set.
     ///
@@ -51,6 +52,8 @@ pub trait GameState<InformationSet, Player, Action> {
     /// Usually only terminal nodes are associated with a utility mapping, but other
     /// nodes are also allowed to have one.
     fn utility(&self, player: &Player) -> Option<f32>;
+
+    fn outcome(&self) -> Outcome<Player>;
 }
 
 /// Represents the history ```h_t``` up until the current time point ```t```.
@@ -62,6 +65,11 @@ pub struct History<T> {
 /// Strategy associated to a certain player.
 pub struct Strategy<InformationSet, Action> {
     map: HashMap<InformationSet, ActionDistribution<Action>>,
+}
+
+/// The outcome of a game associated to a terminal node.
+pub struct Outcome<Player> {
+    map: HashMap<Player, f32>,
 }
 
 pub struct GameTree<InformationSet, State, Player, Action> {
@@ -76,6 +84,7 @@ struct ActionDistribution<Action> {
     map: HashMap<Action, f32>,
 }
 
+#[derive(Clone)]
 pub struct PureStrategyProfile<InformationSet, Action> {
     map: HashMap<InformationSet, Action>,
 }
@@ -88,12 +97,35 @@ impl<InformationSet, Action> Default for PureStrategyProfile<InformationSet, Act
     }
 }
 
+impl<Player> Outcome<Player> {
+    pub fn utility(&self, player: &Player) -> f32
+    where
+        Player: Eq + hash::Hash,
+    {
+        *self
+            .map
+            .get(player)
+            .expect("player did not participate in the game")
+    }
+}
+
 impl<InformationSet, Action> PureStrategyProfile<InformationSet, Action> {
     pub fn insert(&mut self, information_set: InformationSet, action: Action)
     where
         InformationSet: Eq + std::hash::Hash,
     {
         self.map.insert(information_set, action);
+    }
+
+    pub fn information_sets<'a>(&'a self) -> Box<dyn Iterator<Item = &InformationSet> + 'a> {
+        Box::new(self.map.keys())
+    }
+
+    pub fn action(&self, information_set: &InformationSet) -> Option<&Action>
+    where
+        InformationSet: Eq + std::hash::Hash,
+    {
+        self.map.get(information_set)
     }
 }
 
